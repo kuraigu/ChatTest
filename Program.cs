@@ -3,145 +3,129 @@
 /// </summary>
 /// 
 using System;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 namespace ChatTest
 {
     public class Program
     {
-		static int Main(string[] arguments)
-		{
-			if(arguments.Length > 0)
-			{
-				if(arguments[0] == "server")
-				{
-					Console.WriteLine(">> Running Server");
-					Server server = new Server();
-					server.Listen("127.0.0.1", 9001);
-				}
+        static int Main(string[] arguments)
+        {
+            if (arguments.Length > 0)
+            {
+                if (arguments[0] == "server")
+                {
+                    Console.WriteLine(">> Running Server");
+                    Server server = new Server();
+                    server.Listen("127.0.0.1", 9001);
+                }
 
-				else if(arguments[0] == "client")
-				{
-					Client client = new Client();
+                else if (arguments[0] == "client")
+                {
+                    Client client = new Client();
 
-					client.Run();
-				}
-			}
-			return 0;
-		}
+                    client.Run();
+                }
+            }
+            return 0;
+        }
     }
 
-	public class Server 
-	{
-		private TcpListener? listener;
-		private TcpClient? client;
-		
-		public Server()
-		{
-			listener = null;
-			client = null;
-		}
+    public class Server
+    {
+        private TcpListener? listener;
+        private TcpClient? client;
 
-		public int Listen(string hostname, int port)
-		{
-			try
-			{
-				listener = new TcpListener(System.Net.IPAddress.Parse(hostname), port);
+        public Server()
+        {
+            listener = null;
+            client = null;
+        }
 
-				listener.Start();
+        public void Listen(string hostname, int port)
+        {
+            TcpListener listener = new TcpListener(IPAddress.Parse(hostname), port);
+            listener.Start();
+            Console.WriteLine($"Server is listening on {hostname}:{port}");
 
-				Byte[] buffer = new Byte[2048];
-				string? data;
+            while (true)
+            {
+                using (TcpClient client = listener.AcceptTcpClient())
+                {
+                    Console.WriteLine(">> Connected to client");
 
-				bool listening = true;
-				while(listening)
-				{
-					Console.WriteLine(">> Waiting for connection");
-					
-					client = listener.AcceptTcpClient();
-					NetworkStream stream = client.GetStream();
-					data = null; 
-					Console.WriteLine(">> Connected");
+                    byte[] buffer = new byte[2048];
+                    int bytesRead;
 
-					while(listening)
-					{
-						int i = stream.Read(buffer, 0, buffer.Length);
-						if(i == 0) break;
+                    using (NetworkStream stream = client.GetStream())
+                    {
+                        while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            string data = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                            Console.WriteLine("Data received: " + data);
+                        }
+                    }
 
-						data = Encoding.ASCII.GetString(buffer, 0, i);
+                    Console.WriteLine(">> Client disconnected");
+                }
+            }
+        }
+    }
 
-						Console.WriteLine("Data: " + data);
-					}
-				}
-			}
+    public class Client
+    {
+        TcpClient? client;
+        public Client()
+        {
+            client = null;
+        }
 
-			catch (SocketException exception)
-			{
-				Console.WriteLine(exception);
-			}
+        public void Run()
+        {
+            bool running = true;
 
-			finally
-			{
-				if(listener != null) listener.Stop();
-			}
+            while (running)
+            {
+                Console.WriteLine(">> Write a message");
+                Console.Write(">> ");
+                string? message = Console.ReadLine();
 
-			return 0;
-		}		
-	}
+                if (message != null)
+                {
+                    Connect("192.168.254.140", 9001, message);
+                }
+            }
+        }
 
-	public class Client 
-	{
-		TcpClient? client;
-		public Client()
-		{
-			client = null;
-		}
+        public void Connect(string hostname, int port, string message)
+        {
+            try
+            {
+                client = new TcpClient();
+                client?.Connect(hostname, port);
 
-		public void Run()
-		{
-			bool running = true;
+                NetworkStream? stream = null;
 
-			while(running)
-			{
-				Console.WriteLine(">> Write a message");
-				Console.Write(">> ");
-				string? message = Console.ReadLine();
+                Byte[] buffer = Encoding.ASCII.GetBytes(message);
 
-				if(message != null)
-				{
-					Connect("192.168.254.140", 9001, message);
-				}
-			}
-		}
+                if (client != null)
+                    stream = client.GetStream();
 
-		public void Connect(string hostname, int port, string message)
-		{
-			try
-			{
-				client = new TcpClient();
-				client?.Connect(hostname, port);
+                if (stream != null)
+                    stream.Write(buffer, 0, buffer.Length);
+            }
 
-				NetworkStream? stream = null;
+            catch (SocketException exception)
+            {
+                Console.WriteLine(exception);
+            }
 
-				Byte[] buffer = Encoding.ASCII.GetBytes(message);
-
-				if(client != null)
-					stream = client.GetStream();
-
-				if(stream != null)
-					stream.Write(buffer, 0, buffer.Length);
-			}
-
-			catch(SocketException exception)
-			{
-				Console.WriteLine(exception);
-			}
-
-			finally 
-			{
-				Console.WriteLine(">> Sent: " + message);
-				client?.Close();
-			}
-		}
-	}
+            finally
+            {
+                Console.WriteLine(">> Sent: " + message);
+                client?.Close();
+            }
+        }
+    }
 }
