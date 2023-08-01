@@ -21,11 +21,11 @@ namespace ChatTest
                     server.Listen(IPAddress.Any.ToString(), 9001);
                 }
 
-                else if (arguments[0] == "client")
+                else if (arguments.Length >= 3 && arguments[0] == "client")
                 {
                     Client client = new Client();
 
-                    client.Run();
+                    client.Run(arguments[1], arguments[2]);
                 }
             }
             return 0;
@@ -44,12 +44,12 @@ namespace ChatTest
             listener.Start();
             Console.WriteLine($"Server is listening on {hostname}:{port}");
 
+			int numOfMessages = 0;
+
             while (true)
             {
                 using (TcpClient client = listener.AcceptTcpClient())
                 {
-                    Console.WriteLine(">> Connected to client");
-
                     byte[] buffer = new byte[2048];
                     int bytesRead;
 
@@ -57,12 +57,11 @@ namespace ChatTest
                     {
                         while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
                         {
+							numOfMessages++;
                             string data = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-                            Console.WriteLine("Data received: " + data);
+                            Console.WriteLine(numOfMessages.ToString() + " Data received: " + data);
                         }
                     }
-
-                    Console.WriteLine(">> Client disconnected");
                 }
             }
         }
@@ -76,7 +75,7 @@ namespace ChatTest
             client = null;
         }
 
-        public void Run()
+        public void Run(string hostname, int port)
         {
             bool running = true;
 
@@ -88,7 +87,7 @@ namespace ChatTest
 
                 if (message != null)
                 {
-                    Connect("192.168.254.140", 9001, message);
+                    Connect(hostname, port, message);
                 }
             }
         }
@@ -108,7 +107,10 @@ namespace ChatTest
                     stream = client.GetStream();
 
                 if (stream != null)
+				{
                     stream.Write(buffer, 0, buffer.Length);
+					Console.WriteLine(">> Sent: " + message);
+				}
             }
 
             catch (SocketException exception)
@@ -118,7 +120,7 @@ namespace ChatTest
 
             finally
             {
-                Console.WriteLine(">> Sent: " + message);
+                
                 client?.Close();
             }
         }
