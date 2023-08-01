@@ -18,7 +18,7 @@ namespace ChatTest
                 {
                     Console.WriteLine(">> Running Server");
                     Server server = new Server();
-                    server.Listen("127.0.0.1", 9001);
+                    server.Listen(IPAddress.Loopback.ToString(), 9001);
                 }
 
                 else if (arguments[0] == "client")
