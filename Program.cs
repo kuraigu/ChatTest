@@ -25,7 +25,7 @@ namespace ChatTest
                 {
                     Client client = new Client();
 
-                    client.Run(arguments[1], arguments[2]);
+                    client.Run(arguments[1], Int32.Parse(arguments[2]));
                 }
             }
             return 0;
